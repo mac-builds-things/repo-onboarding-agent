@@ -1,124 +1,70 @@
 # repo-onboarding-agent
 
-> An agent that reads an unfamiliar codebase and produces a structured onboarding brief: project map, key commands, risky areas, and first good tasks.
+Point it at a repo. Get a structured onboarding brief in seconds.
 
----
+Drop a new agent into an unfamiliar codebase and the first 20 minutes vanish into ritual: find the entry points, decode the test commands, figure out which files are haunted. This agent does that analysis once and produces a report every subsequent session can skip straight past.
 
-## Why it exists
+Here's what the output contains:
 
-Every time an agent — or a human — starts a new session in an unfamiliar codebase, the first 20 minutes disappear into the same ritual: find the entry points, decode the test commands, figure out which files are haunted, guess what "good first task" even means here. That work is repeatable. It can be done once, stored durably, and handed to the next agent (or engineer) as a structured brief.
+- Overview — what the project does, its stack, scale, and CI setup
+- Tech Stack — all framework and library versions in a dependency table
+- Directory Map — annotated file tree with a description of every significant path
+- Key Commands — every runnable command from Makefile / pyproject.toml / package.json / Justfile, classified by purpose
+- Test Setup — how to run tests, key fixtures, coverage baseline, any test-DB requirements
+- Risky Areas — auth code, zero-coverage modules, fragile integrations — each with a risk level and a recommendation
+- Entry Points — the 2–3 files to read first and exactly why each one unlocks the rest
+- First Good Tasks — scoped starter tasks with file lists, complexity estimates, and acceptance criteria
+- Open Questions — unresolved ambiguities worth discussing before touching sensitive areas
 
-`repo-onboarding-agent` does that one-time analysis and produces an **Onboarding Report** — a structured markdown document that front-loads orientation so any subsequent session can skip straight to productive work.
+See [reports/examples/example-report.md](reports/examples/example-report.md) for a realistic full output.
 
-The durable-context insight: the report doesn't expire quickly. A codebase's directory shape, test commands, risky files, and entry points change slowly. Running the agent once per week (or on each significant merge) means every session starts informed.
-
----
-
-## What makes it interesting
-
-| Feature | What it does |
-|---|---|
-| **Structured output** | Report is machine-readable JSON + human-readable Markdown, so downstream agents can parse it or humans can read it |
-| **Risky area detection** | Flags files with no test coverage, files last touched during incident commits, dense dependency graphs, auth/billing/crypto code |
-| **First-good-task suggestions** | Scans open TODOs, small isolated modules, and clearly-scoped untested functions to suggest where to start |
-| **Command inventory** | Extracts every runnable command from `Makefile`, `package.json`, `pyproject.toml`, `Justfile`, etc. and classifies them (build / test / lint / serve / deploy) |
-| **Entry point map** | Identifies main modules, API routers, CLI entry points, and background workers |
-| **Tech stack inference** | Detects languages, frameworks, databases, and infra from dependency files and config |
-
----
-
-## Quickstart
+## Usage
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
-
-# Run on the current directory
-python examples/run_onboarding.py --repo .
-
-# Run on any local repo path
-python examples/run_onboarding.py --repo /path/to/some/project
-
-# Output to a specific file
-python examples/run_onboarding.py --repo /path/to/project --output reports/my-project.md
+python examples/run_onboarding.py --repo /path/to/project
 ```
 
-The report is written to `reports/` by default and printed to stdout as a summary.
-
----
-
-## Example workflow
+Pass `--output reports/my-project.md` to set a custom output path. The report is also printed to stdout as a summary.
 
 ```
-$ python examples/run_onboarding.py --repo ~/src/my-api
+$ python examples/run_onboarding.py --repo ~/src/inventory-api
 
 [1/6] Scanning directory structure...    ✓  47 directories, 312 files
-[2/6] Inferring tech stack...            ✓  Python · FastAPI · PostgreSQL · Redis
-[3/6] Extracting commands...             ✓  11 commands found (Makefile + pyproject.toml)
+[2/6] Inferring tech stack...            ✓  Python · FastAPI · PostgreSQL
+[3/6] Extracting commands...             ✓  13 commands (Makefile + pyproject.toml)
 [4/6] Mapping entry points...            ✓  3 entry points identified
-[5/6] Detecting risky areas...           ✓  6 areas flagged
-[6/6] Suggesting first good tasks...     ✓  4 tasks suggested
+[5/6] Detecting risky areas...           ✓  4 areas flagged
+[6/6] Suggesting first good tasks...     ✓  3 tasks suggested
 
-Report written to: reports/my-api-onboarding.md
+Report written to: reports/inventory-api-onboarding.md
 ```
 
-Then hand the report to any agent at session start:
+Hand the report to any agent at session start and it already knows the test command, the relevant router, the risky auth middleware it should not touch, and which module has zero coverage.
 
-```python
-context = open("reports/my-api-onboarding.md").read()
-agent.run(system_prompt=AGENT_PROMPT, context=context, task="Add rate limiting to the /search endpoint")
-```
+## Report sections
 
-The agent already knows the test command, the relevant router file, the risky auth middleware it shouldn't touch, and that there are 0 tests for the search module. It can work without re-discovering any of that.
+| Section | What it contains |
+|---|---|
+| Overview | Plain-language description of the project, tech choices, scale, and deployment target |
+| Tech Stack | Framework and library versions in a structured table |
+| Directory Map | Annotated file tree with one-line descriptions of every significant directory and file |
+| Key Commands | Every runnable command from Makefile, pyproject.toml, package.json, Justfile — with dev / test / deploy classification |
+| Test Setup | How to run tests, which fixtures exist, coverage percentage, any test-DB setup required |
+| Risky Areas | Files flagged for no coverage, auth / billing / crypto patterns, incident-correlated commits, or missing retry logic — each with a risk level and concrete recommendation |
+| Entry Points | The 2–3 files a new contributor should read first, with a sentence on why each one unlocks the rest |
+| First Good Tasks | 2–4 scoped starter tasks with file lists, complexity estimates, and clear acceptance criteria |
+| Open Questions | Ambiguities or known gaps worth surfacing before any significant work begins |
 
----
+## How it works
 
-## Report structure
+- **Structure analyzer** — walks the repo tree, reads dependency manifests, and infers tech stack, directory conventions, and project scale
+- **Command extractor** — parses Makefile targets, pyproject.toml scripts, package.json scripts, and Justfile rules into a unified command inventory with semantic labels
+- **Risk identifier** — applies static heuristics: zero-test-coverage detection, auth/crypto/billing keyword matching, dependency graph density, and comment-based signals like `# TODO` and `# FRAGILE`
 
-See [ONBOARDING.md](ONBOARDING.md) for a full description of every section.
+## Extending it
 
-See [reports/examples/example-report.md](reports/examples/example-report.md) for a realistic example output.
+- Add an analyzer by creating a new module under `src/analyzers/` that returns a typed dataclass, then register it in `src/agent.py`
+- Override the report template in `templates/onboarding-report.md` to add, reorder, or rename sections without touching Python
+- Wire an LLM call into the `first_good_tasks` and `open_questions` analyzers for the judgment-requiring sections — the stub interfaces are already defined
 
----
-
-## What this demonstrates
-
-- **Codebase analysis as an agent capability**: treating "understand this repo" as a first-class task, not ambient cognition
-- **Structured reporting for agent handoff**: designing output that serves both humans and downstream agents
-- **Risk surface detection**: static analysis heuristics that don't require running the code
-- **Command inventory extraction**: multi-format parsing (Make, npm, Poetry, Just) with semantic classification
-- **Durable context as a pattern**: the observation that orientation work is amortizable across many sessions
-
----
-
-## Project layout
-
-```
-repo-onboarding-agent/
-├── src/
-│   ├── agent.py              # Core OnboardingAgent + data models
-│   └── analyzers/
-│       ├── structure.py      # Directory/file structure analysis
-│       ├── commands.py       # Runnable command extraction
-│       └── risks.py          # Risky area detection
-├── templates/
-│   └── onboarding-report.md  # Report template
-├── reports/
-│   └── examples/
-│       └── example-report.md # Realistic example output
-├── tests/
-│   └── test_agent.py
-├── examples/
-│   └── run_onboarding.py
-├── requirements.txt
-└── pyproject.toml
-```
-
----
-
-## Honest status
-
-This is a design artifact and architectural sketch, not production-ready software. The agent structure, data models, and report format are fully specified. The analyzer implementations are stubs — the interesting engineering work is in filling them in with real static analysis logic, and optionally wiring an LLM for the "first good tasks" and "open questions" sections where judgment is required.
-
-The example report (`reports/examples/example-report.md`) is hand-authored to show the target quality. A real implementation would generate something close to it automatically.
-
+Design artifact and architectural sketch — the agent structure, data models, and report format are fully specified; the analyzer implementations are stubs ready to be filled with real static analysis logic.
