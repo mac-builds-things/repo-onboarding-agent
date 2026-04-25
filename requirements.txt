@@ -1,0 +1,16 @@
+# Core
+pydantic>=2.7.0
+rich>=13.7.0
+
+# Testing
+pytest>=8.2.0
+pytest-asyncio>=0.23.0
+
+# File pattern matching (used in structure analyzer for gitignore-style exclusions)
+pathspec>=0.12.1
+
+# Template rendering (used in render_markdown)
+jinja2>=3.1.4
+
+# TOML parsing for pyproject.toml (stdlib tomllib available in Python 3.11+; this covers 3.9/3.10)
+tomli>=2.0.1; python_version < "3.11"
