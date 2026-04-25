@@ -1,0 +1,29 @@
+---
+description: Onboarding report quality standards
+globs: reports/**/*.md,templates/**/*.md
+alwaysApply: false
+---
+
+# Onboarding Report Standards
+
+## All 9 sections required
+Every report must include: Overview, Tech Stack, Directory Map, Key Commands, Test Setup, Risky Areas, Entry Points, First Good Tasks, Open Questions. Use "None identified" for empty sections — never omit them.
+
+## First Good Tasks need complexity estimates
+```markdown
+<!-- ✅ GOOD -->
+### First Good Tasks
+1. **Add pagination to /v1/products endpoint** (Easy, ~1-2 hours)
+   - File: app/api/v1/products.py
+   - Existing test: tests/test_products.py
+
+<!-- ❌ BAD — no location, no estimate -->
+### First Good Tasks
+1. Add pagination
+```
+
+## Static analysis only — no hallucination
+If you can't determine something from the filesystem, write "Unable to determine from static analysis" rather than guessing.
+
+## Reports are immutable after delivery
+Never edit a report that has been delivered. Create a new one with an updated timestamp.
